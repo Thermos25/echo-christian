@@ -20,11 +20,11 @@ export default function ChatPage() {
       video.playbackRate = 1.18;
       video.play().catch(() => {});
     } else if (ttsState === "loading") {
-      video.playbackRate = 0.85;
+      video.playbackRate = 0.65;
       video.play().catch(() => {});
     } else {
-      video.playbackRate = 0.55;
-      video.play().catch(() => {});
+      video.pause();
+      video.currentTime = 0;
     }
   }, [ttsState]);
 
@@ -158,10 +158,10 @@ export default function ChatPage() {
             ref={avatarVideoRef}
             src="/echo-avatar-speaking.mp4"
             className="h-full w-full object-cover"
-            autoPlay
             muted
             loop
             playsInline
+            preload="metadata"
           />
 
           <div
@@ -197,7 +197,7 @@ export default function ChatPage() {
               ? "spricht gerade..."
               : ttsState === "loading"
               ? "bereitet Stimme vor..."
-              : "ist präsent"}
+              : "wartet ruhig"}
           </div>
         </div>
       </div>
