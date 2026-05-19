@@ -178,7 +178,7 @@ export default function ChatPage() {
                     <div
                       className={`max-w-[85%] sm:max-w-[75%] p-4 ${
                         msg.role === "user"
-                          ? "bg-primary/20 border border-primary/30 text-primary-foreground rounded-2xl rounded-tr-none"
+                          ? "bg-blue-600/35 border border-blue-400/60 text-white rounded-2xl rounded-tr-none shadow-[0_0_18px_rgba(59,130,246,0.22)]"
                           : "glass-panel rounded-2xl rounded-tl-none border-primary/20 text-foreground/90 leading-relaxed font-sans"
                       }`}
                     >
@@ -210,7 +210,7 @@ export default function ChatPage() {
                             ) : (
                               <Volume2 className="w-3 h-3" />
                             )}
-                            {isThisLoading ? "Synthesizing..." : isThisPlaying ? "Stop" : "Speak"}
+                            {isThisLoading ? "Stimme wird erzeugt..." : isThisPlaying ? "Stopp" : "Sprechen"}
                           </button>
                         </div>
                       )}
@@ -274,11 +274,11 @@ export default function ChatPage() {
               placeholder={
                 micState === "listening"
                   ? "Spreche jetzt..."
-                  : "Transmit your thoughts..."
+                  : "Schreibe oder sprich deine Gedanken..."
               }
-              className="w-full max-h-32 min-h-[56px] py-4 px-4 bg-transparent border-none focus:ring-0 resize-none text-foreground placeholder:text-muted-foreground font-mono text-sm leading-relaxed"
+              className="w-full max-h-32 min-h-[56px] py-4 px-4 bg-transparent border-none focus:ring-0 resize-none text-white placeholder:text-blue-100/55 font-mono text-base leading-relaxed caret-blue-300"
               style={{
-                color: interimText ? "rgba(255,255,255,0.45)" : undefined,
+                color: interimText ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.96)",
               }}
               rows={1}
               disabled={isStreaming}
