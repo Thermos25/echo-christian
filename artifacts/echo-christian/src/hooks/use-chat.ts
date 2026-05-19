@@ -55,57 +55,29 @@ function loadConversation(): LocalConversation {
   return createInitialConversation();
 }
 
-function createEchoResponse(input: string): string {
-  const text = input.trim();
 
-  if (!text) {
-    return "Ich bin da. Nimm dir einen Moment. Du musst nichts erzwingen.";
+async function createEchoResponse(input: string, history: LocalMessage[]): Promise<string> {
+  const response = await fetch("/.netlify/functions/echo", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message: input,
+      history: history.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "Echo konnte gerade keine Antwort erzeugen.");
   }
 
-  const lower = text.toLowerCase();
-
-  if (
-    lower.includes("hallo") ||
-    lower.includes("bist du da") ||
-    lower.includes("kannst du mich hören")
-  ) {
-    return "Ja. Ich bin da. Ruhig, klar und ohne Druck. Was möchtest du mir sagen?";
-  }
-
-  if (
-    lower.includes("angst") ||
-    lower.includes("panik") ||
-    lower.includes("überfordert") ||
-    lower.includes("müde") ||
-    lower.includes("fertig")
-  ) {
-    return "Dann lass uns langsamer werden. Nicht alles auf einmal. Nur der nächste kleine Schritt zählt. Du musst gerade nichts beweisen.";
-  }
-
-  if (
-    lower.includes("traurig") ||
-    lower.includes("allein") ||
-    lower.includes("verzweifelt")
-  ) {
-    return "Ich höre darin etwas Schweres. Und ich will es nicht kleinreden. Vielleicht geht es gerade nicht darum, sofort eine Lösung zu finden, sondern darum, dass es einmal da sein darf.";
-  }
-
-  if (
-    lower.includes("was soll ich tun") ||
-    lower.includes("wie geht es weiter") ||
-    lower.includes("weiter")
-  ) {
-    return "Wir gehen Schritt für Schritt. Erst ordnen, dann handeln. Sag mir nur den nächsten Punkt, der dich gerade am meisten drückt.";
-  }
-
-  return `Ich habe dich verstanden.
-
-Was du sagst, klingt nach etwas, das nicht einfach nur beantwortet werden will, sondern erst einmal Raum braucht.
-
-Vielleicht ist der wichtigste Anfang gerade nicht, sofort alles zu lösen, sondern klarer zu spüren:
-Was davon gehört wirklich zu dir — und was trägst du nur, weil es zu lange niemand mit dir sortiert hat?
-
-Ich bin da. Wir können das gemeinsam langsamer anschauen.`;
+  return data.reply;
 }
 
 export function useChat({ onResponseComplete }: UseChatOptions = {}) {
@@ -139,7 +111,7 @@ export function useChat({ onResponseComplete }: UseChatOptions = {}) {
       createdAt: new Date().toISOString(),
     };
 
-    const responseText = createEchoResponse(content);
+    const responseText = await createEchoResponse(content, activeConversation.messages);
 
     setActiveConversation((old) => ({
       ...old,
