@@ -1,11 +1,4 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import {
-  useListOpenaiConversations,
-  useCreateOpenaiConversation,
-  useGetOpenaiConversation,
-  getGetOpenaiConversationQueryKey
-} from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
 
 export type MessageRole = "user" | "assistant" | "system";
 
@@ -19,122 +12,177 @@ interface UseChatOptions {
   onResponseComplete?: (content: string) => void;
 }
 
+type LocalMessage = {
+  id: number;
+  conversationId: number;
+  role: MessageRole;
+  content: string;
+  createdAt: string;
+};
+
+type LocalConversation = {
+  id: number;
+  title: string;
+  messages: LocalMessage[];
+};
+
+const STORAGE_KEY = "echo-christian-local-conversation";
+
+function createInitialConversation(): LocalConversation {
+  return {
+    id: 1,
+    title: "Echo Christian",
+    messages: [
+      {
+        id: 1,
+        conversationId: 1,
+        role: "assistant",
+        content:
+          "Ich bin da. Schreib mir einfach, was gerade in dir arbeitet. Du musst es nicht perfekt formulieren.",
+        createdAt: new Date().toISOString(),
+      },
+    ],
+  };
+}
+
+function loadConversation(): LocalConversation {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {
+    // Ignorieren und neu starten
+  }
+  return createInitialConversation();
+}
+
+function createEchoResponse(input: string): string {
+  const text = input.trim();
+
+  if (!text) {
+    return "Ich bin da. Nimm dir einen Moment. Du musst nichts erzwingen.";
+  }
+
+  const lower = text.toLowerCase();
+
+  if (
+    lower.includes("hallo") ||
+    lower.includes("bist du da") ||
+    lower.includes("kannst du mich hören")
+  ) {
+    return "Ja. Ich bin da. Ruhig, klar und ohne Druck. Was möchtest du mir sagen?";
+  }
+
+  if (
+    lower.includes("angst") ||
+    lower.includes("panik") ||
+    lower.includes("überfordert") ||
+    lower.includes("müde") ||
+    lower.includes("fertig")
+  ) {
+    return "Dann lass uns langsamer werden. Nicht alles auf einmal. Nur der nächste kleine Schritt zählt. Du musst gerade nichts beweisen.";
+  }
+
+  if (
+    lower.includes("traurig") ||
+    lower.includes("allein") ||
+    lower.includes("verzweifelt")
+  ) {
+    return "Ich höre darin etwas Schweres. Und ich will es nicht kleinreden. Vielleicht geht es gerade nicht darum, sofort eine Lösung zu finden, sondern darum, dass es einmal da sein darf.";
+  }
+
+  if (
+    lower.includes("was soll ich tun") ||
+    lower.includes("wie geht es weiter") ||
+    lower.includes("weiter")
+  ) {
+    return "Wir gehen Schritt für Schritt. Erst ordnen, dann handeln. Sag mir nur den nächsten Punkt, der dich gerade am meisten drückt.";
+  }
+
+  return `Ich habe dich verstanden.
+
+Was du sagst, klingt nach etwas, das nicht einfach nur beantwortet werden will, sondern erst einmal Raum braucht.
+
+Vielleicht ist der wichtigste Anfang gerade nicht, sofort alles zu lösen, sondern klarer zu spüren:
+Was davon gehört wirklich zu dir — und was trägst du nur, weil es zu lange niemand mit dir sortiert hat?
+
+Ich bin da. Wir können das gemeinsam langsamer anschauen.`;
+}
+
 export function useChat({ onResponseComplete }: UseChatOptions = {}) {
-  const queryClient = useQueryClient();
-
-  const { data: conversations, isLoading: isConversationsLoading } = useListOpenaiConversations();
-  const createConversation = useCreateOpenaiConversation();
-
-  const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
+  const [activeConversation, setActiveConversation] = useState<LocalConversation>(() =>
+    loadConversation()
+  );
   const [streamedContent, setStreamedContent] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
 
   const onResponseCompleteRef = useRef(onResponseComplete);
   onResponseCompleteRef.current = onResponseComplete;
 
-  // Auto-create or select first conversation on load
   useEffect(() => {
-    if (!isConversationsLoading && conversations) {
-      if (conversations.length > 0 && activeConversationId === null) {
-        setActiveConversationId(conversations[0].id);
-      } else if (conversations.length === 0 && !createConversation.isPending) {
-        createConversation.mutate({ data: { title: "New Sync" } }, {
-          onSuccess: (conv) => {
-            setActiveConversationId(conv.id);
-            queryClient.invalidateQueries({ queryKey: ["/api/openai/conversations"] });
-          }
-        });
-      }
-    }
-  }, [conversations, isConversationsLoading, activeConversationId, createConversation.isPending, queryClient, createConversation]);
-
-  const { data: activeConversation } = useGetOpenaiConversation(
-    activeConversationId as number,
-    { query: { enabled: !!activeConversationId, queryKey: getGetOpenaiConversationQueryKey(activeConversationId as number) } }
-  );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(activeConversation));
+  }, [activeConversation]);
 
   const startNewConversation = useCallback(() => {
-    createConversation.mutate({ data: { title: "New Sync" } }, {
-      onSuccess: (conv) => {
-        setActiveConversationId(conv.id);
-        queryClient.invalidateQueries({ queryKey: ["/api/openai/conversations"] });
-      }
-    });
-  }, [createConversation, queryClient]);
+    const fresh = createInitialConversation();
+    setActiveConversation(fresh);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+  }, []);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!activeConversationId || !content.trim()) return;
+    if (!content.trim()) return;
 
-    const tempUserMsg = {
+    const userMessage: LocalMessage = {
       id: Date.now(),
-      conversationId: activeConversationId,
+      conversationId: 1,
       role: "user",
       content,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
-    queryClient.setQueryData(getGetOpenaiConversationQueryKey(activeConversationId), (old: any) => {
-      if (!old) return old;
-      return { ...old, messages: [...old.messages, tempUserMsg] };
-    });
+    const responseText = createEchoResponse(content);
+
+    setActiveConversation((old) => ({
+      ...old,
+      messages: [...old.messages, userMessage],
+    }));
 
     setIsStreaming(true);
     setStreamedContent("");
 
-    try {
-      const response = await fetch(`/api/openai/conversations/${activeConversationId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
+    let current = "";
 
-      if (!response.body) throw new Error("No response body");
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let echoContent = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const text = decoder.decode(value);
-        const lines = text.split("\n").filter(l => l.startsWith("data: "));
-
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.done) break;
-            if (data.content) {
-              echoContent += data.content;
-              setStreamedContent(echoContent);
-            }
-          } catch {
-            // ignore parse errors on partial chunks
-          }
-        }
-      }
-
-      queryClient.invalidateQueries({ queryKey: getGetOpenaiConversationQueryKey(activeConversationId) });
-
-      if (echoContent) {
-        onResponseCompleteRef.current?.(echoContent);
-      }
-    } catch (err) {
-      console.error("Failed to send message", err);
-    } finally {
-      setIsStreaming(false);
-      setStreamedContent("");
+    for (const char of responseText) {
+      current += char;
+      setStreamedContent(current);
+      await new Promise((resolve) => setTimeout(resolve, 8));
     }
-  }, [activeConversationId, queryClient]);
+
+    const assistantMessage: LocalMessage = {
+      id: Date.now() + 1,
+      conversationId: 1,
+      role: "assistant",
+      content: responseText,
+      createdAt: new Date().toISOString(),
+    };
+
+    setActiveConversation((old) => ({
+      ...old,
+      messages: [...old.messages, assistantMessage],
+    }));
+
+    onResponseCompleteRef.current?.(responseText);
+
+    setIsStreaming(false);
+    setStreamedContent("");
+  }, []);
 
   return {
     activeConversation,
-    activeConversationId,
+    activeConversationId: 1,
     startNewConversation,
     sendMessage,
     streamedContent,
     isStreaming,
-    isLoading: isConversationsLoading
+    isLoading: false,
   };
 }
