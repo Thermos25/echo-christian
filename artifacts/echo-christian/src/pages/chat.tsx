@@ -81,6 +81,26 @@ export default function ChatPage() {
   const [interimText, setInterimText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+
+    setSelectedFiles((prev) => [...prev, ...files]);
+    event.target.value = "";
+  };
+
+  const removeSelectedFile = (indexToRemove: number) => {
+    setSelectedFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
+  };
+
   const inputRef2 = useRef(input);
   inputRef2.current = input;
 
@@ -407,6 +427,39 @@ export default function ChatPage() {
 
         {/* Input Area */}
         <div className="w-full max-w-3xl mx-auto mt-4">
+          <input
+            ref={fileInputRef}
+            data-echo-file-upload
+            type="file"
+            accept="image/*,application/pdf"
+            multiple
+            className="hidden"
+            onChange={handleFilesChange}
+          />
+
+          {selectedFiles.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {selectedFiles.map((file, index) => (
+                <div
+                  key={`${file.name}-${index}`}
+                  className="flex max-w-full items-center gap-2 rounded-full border border-blue-400/40 bg-blue-950/70 px-3 py-1.5 text-xs text-white shadow-[0_0_14px_rgba(59,130,246,0.18)]"
+                >
+                  <span className="max-w-[220px] truncate">
+                    {file.type.includes("pdf") ? "PDF" : "Bild"} · {file.name}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => removeSelectedFile(index)}
+                    className="rounded-full px-1 text-blue-200 transition hover:bg-blue-400/20 hover:text-white"
+                    title="Datei entfernen"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )
           <form
             onSubmit={handleSubmit}
             className="relative flex items-end w-full glass-panel rounded-2xl p-1 transition-all duration-300"
@@ -419,6 +472,17 @@ export default function ChatPage() {
                 : "none",
             }}
           >
+            <button
+              type="button"
+              onClick={openFilePicker}
+              disabled={isStreaming}
+              data-testid="button-file-upload"
+              title="Bild oder PDF hinzufügen"
+              className="absolute left-2 bottom-2 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-blue-400/35 bg-blue-900/35 text-xl font-light leading-none text-blue-100 shadow-[0_0_12px_rgba(59,130,246,0.18)] transition-all duration-300 hover:border-blue-300/70 hover:bg-blue-800/60 hover:text-white disabled:opacity-40"
+            >
+              +
+            </button>
+
             <textarea
               ref={inputRef}
               value={displayValue}
@@ -437,7 +501,7 @@ export default function ChatPage() {
                   ? "Spreche jetzt..."
                   : "Schreibe oder sprich deine Gedanken..."
               }
-              className="w-full max-h-32 min-h-[56px] py-4 px-4 bg-transparent border-none focus:ring-0 resize-none text-white placeholder:text-blue-100/55 font-mono text-base leading-relaxed caret-blue-300"
+              className="w-full max-h-32 min-h-[56px] py-4 pl-14 pr-28 bg-transparent border-none focus:ring-0 resize-none text-white placeholder:text-blue-100/55 font-mono text-base leading-relaxed caret-blue-300"
               style={{
                 color: interimText ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.96)",
               }}
