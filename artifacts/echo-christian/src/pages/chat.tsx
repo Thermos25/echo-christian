@@ -7,6 +7,46 @@ import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { EchoAvatar } from "@/components/EchoAvatar";
 import { Button } from "@/components/ui/button";
 
+
+type StoredUpload = {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  dataUrl: string;
+  createdAt: string;
+};
+
+const ECHO_UPLOAD_STORAGE_KEY = "echo-christian-uploaded-files";
+
+const readStoredUploads = (): StoredUpload[] => {
+  try {
+    const saved = localStorage.getItem(ECHO_UPLOAD_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveStoredUploads = (files: StoredUpload[]) => {
+  try {
+    localStorage.setItem(ECHO_UPLOAD_STORAGE_KEY, JSON.stringify(files));
+  } catch {
+    console.warn("Uploads konnten nicht lokal gespeichert werden.");
+  }
+};
+
+const fileToDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function ChatPage() {
   const { speak, stop: stopTts, state: ttsState, playingId } = useTts();
 
@@ -83,22 +123,52 @@ export default function ChatPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<StoredUpload[]>(() => readStoredUploads());
+  const [uploadNotice, setUploadNotice] = useState("");
 
   const openFilePicker = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
 
-    setSelectedFiles((prev) => [...prev, ...files]);
+    const maxSizeMb = 8;
+    const acceptedFiles = files.filter((file) => file.size <= maxSizeMb * 1024 * 1024);
+
+    if (acceptedFiles.length !== files.length) {
+      setUploadNotice(`Einige Dateien waren größer als ${maxSizeMb} MB und wurden nicht gespeichert.`);
+    } else {
+      setUploadNotice("");
+    }
+
+    const storedFiles: StoredUpload[] = await Promise.all(
+      acceptedFiles.map(async (file) => ({
+        id: `${file.name}-${file.size}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        dataUrl: await fileToDataUrl(file),
+        createdAt: new Date().toISOString(),
+      }))
+    );
+
+    setSelectedFiles((prev) => {
+      const next = [...prev, ...storedFiles];
+      saveStoredUploads(next);
+      return next;
+    });
+
     event.target.value = "";
   };
 
   const removeSelectedFile = (indexToRemove: number) => {
-    setSelectedFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
+    setSelectedFiles((prev) => {
+      const next = prev.filter((_, index) => index !== indexToRemove);
+      saveStoredUploads(next);
+      return next;
+    });
   };
 
   const inputRef2 = useRef(input);
@@ -437,6 +507,24 @@ export default function ChatPage() {
             onChange={handleFilesChange}
           />
 
+          {uploadNotice && (
+            <div
+              data-echo-upload-notice
+              className="mb-2 rounded-xl border border-amber-400/30 bg-amber-950/40 px-3 py-2 text-xs text-amber-100"
+            >
+              {uploadNotice}
+            </div>
+          )}
+
+          {selectedFiles.length > 0 && (
+            <div
+              data-echo-upload-saved-hint
+              className="mb-2 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-blue-200/45"
+            >
+              Dateien lokal gespeichert
+            </div>
+          )}
+
           {selectedFiles.length > 0 && (
             <div className="mb-3 flex flex-wrap gap-2">
               {selectedFiles.map((file, index) => (
@@ -445,7 +533,7 @@ export default function ChatPage() {
                   className="flex max-w-full items-center gap-2 rounded-full border border-blue-400/40 bg-blue-950/70 px-3 py-1.5 text-xs text-white shadow-[0_0_14px_rgba(59,130,246,0.18)]"
                 >
                   <span className="max-w-[220px] truncate">
-                    {file.type.includes("pdf") ? "PDF" : "Bild"} · {file.name}
+                    {file.type.includes("pdf") ? "PDF" : "Bild"} · {file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB
                   </span>
 
                   <button
