@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Plus, Terminal } from "lucide-react";
+import { Send, Plus, Terminal, Volume2, VolumeX, Loader2 } from "lucide-react";
 import { useChat } from "@/hooks/use-chat";
+import { useTts } from "@/hooks/use-tts";
 import { EchoAvatar } from "@/components/EchoAvatar";
 import { Button } from "@/components/ui/button";
 
@@ -14,6 +15,8 @@ export default function ChatPage() {
     isStreaming,
     isLoading
   } = useChat();
+
+  const { speak, state: ttsState, playingId } = useTts();
 
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,8 +56,8 @@ export default function ChatPage() {
             <p className="text-xs text-primary/70 tracking-widest uppercase">Your AI Twin</p>
           </div>
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={startNewConversation}
           className="glass-panel border-primary/30 hover:border-primary/60 text-primary hover:text-primary-foreground hover:bg-primary transition-all duration-300"
           data-testid="button-new-conversation"
@@ -66,7 +69,7 @@ export default function ChatPage() {
 
       {/* Main Chat Area */}
       <main className="flex-1 w-full max-w-4xl px-4 sm:px-6 flex flex-col relative z-10 overflow-hidden pb-4">
-        
+
         {/* Avatar Display */}
         <div className="flex-shrink-0 flex justify-center py-6">
           <EchoAvatar />
@@ -75,7 +78,7 @@ export default function ChatPage() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto w-full pr-2 pb-2 scrollbar-hide" ref={scrollRef}>
           <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto pb-4">
-            
+
             {!isLoading && activeConversation?.messages?.length === 0 && (
               <div className="flex justify-center items-center h-40 opacity-50">
                 <p className="font-mono text-sm tracking-widest uppercase text-center">Neural link established. Awaiting input.</p>
@@ -83,30 +86,61 @@ export default function ChatPage() {
             )}
 
             <AnimatePresence initial={false}>
-              {activeConversation?.messages?.filter(m => m.role !== 'system').map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  <div 
-                    className={`max-w-[85%] sm:max-w-[75%] p-4 ${
-                      msg.role === "user" 
-                        ? "bg-primary/20 border border-primary/30 text-primary-foreground rounded-2xl rounded-tr-none" 
-                        : "glass-panel rounded-2xl rounded-tl-none border-primary/20 text-foreground/90 leading-relaxed font-sans"
-                    }`}
+              {activeConversation?.messages?.filter(m => m.role !== "system").map((msg) => {
+                const msgId = String(msg.id);
+                const isThisPlaying = playingId === msgId && ttsState === "playing";
+                const isThisLoading = playingId === msgId && ttsState === "loading";
+
+                return (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    {msg.role === "assistant" && (
-                      <div className="flex items-center gap-2 mb-2 opacity-50">
-                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        <span className="text-[10px] font-mono uppercase tracking-wider">ECHO</span>
-                      </div>
-                    )}
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
-                  </div>
-                </motion.div>
-              ))}
+                    <div
+                      className={`max-w-[85%] sm:max-w-[75%] p-4 ${
+                        msg.role === "user"
+                          ? "bg-primary/20 border border-primary/30 text-primary-foreground rounded-2xl rounded-tr-none"
+                          : "glass-panel rounded-2xl rounded-tl-none border-primary/20 text-foreground/90 leading-relaxed font-sans"
+                      }`}
+                    >
+                      {msg.role === "assistant" && (
+                        <div className="flex items-center gap-2 mb-2 opacity-50">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          <span className="text-[10px] font-mono uppercase tracking-wider">ECHO</span>
+                        </div>
+                      )}
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
+
+                      {msg.role === "assistant" && (
+                        <div className="mt-3 pt-2 border-t border-primary/10">
+                          <button
+                            onClick={() => speak(msg.content, msgId)}
+                            disabled={ttsState === "loading" && playingId !== msgId}
+                            data-testid={`button-speak-${msg.id}`}
+                            className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider transition-all duration-200 disabled:opacity-30"
+                            style={{
+                              color: isThisPlaying
+                                ? "rgba(59,130,246,1)"
+                                : "rgba(59,130,246,0.5)",
+                            }}
+                          >
+                            {isThisLoading ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : isThisPlaying ? (
+                              <VolumeX className="w-3 h-3" />
+                            ) : (
+                              <Volume2 className="w-3 h-3" />
+                            )}
+                            {isThisLoading ? "Synthesizing..." : isThisPlaying ? "Stop" : "Speak"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
 
             {/* Streaming Message */}
@@ -125,14 +159,14 @@ export default function ChatPage() {
                 </div>
               </motion.div>
             )}
-            
+
             <div ref={messagesEndRef} />
           </div>
         </div>
 
         {/* Input Area */}
         <div className="w-full max-w-3xl mx-auto mt-4">
-          <form 
+          <form
             onSubmit={handleSubmit}
             className="relative flex items-end w-full glass-panel rounded-2xl p-1 glow-border focus-within:shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all duration-300"
           >
@@ -140,7 +174,7 @@ export default function ChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   handleSubmit(e);
                 }
@@ -151,8 +185,8 @@ export default function ChatPage() {
               disabled={isStreaming}
               data-testid="input-chat"
             />
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               size="icon"
               disabled={!input.trim() || isStreaming}
               className="absolute right-2 bottom-2 h-10 w-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_10px_rgba(59,130,246,0.4)] disabled:opacity-50 disabled:shadow-none transition-all duration-300"
