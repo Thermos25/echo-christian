@@ -6,6 +6,7 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 // Netlify setzt während des Builds nicht immer PORT.
 // Deshalb verwenden wir 3000 als sicheren Standardwert.
+const basePath = process.env.BASE_PATH || "/";
 const rawPort = process.env.PORT || "3000";
 const port = Number(rawPort);
 
