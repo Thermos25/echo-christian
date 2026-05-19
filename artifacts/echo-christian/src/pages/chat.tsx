@@ -37,17 +37,17 @@ export default function ChatPage() {
     const video = avatarVideoRef.current;
     if (!video) return;
 
-    const echoIsAnswering = isStreaming || ttsState === "loading" || ttsState === "playing";
+    const echoIsActive = isStreaming || ttsState === "loading" || ttsState === "playing";
 
     if (ttsState === "playing") {
-      video.playbackRate = 1.18;
+      video.playbackRate = 1.08;
       video.play().catch(() => {});
-    } else if (echoIsAnswering) {
-      video.playbackRate = 0.82;
+    } else if (echoIsActive) {
+      video.playbackRate = 0.72;
       video.play().catch(() => {});
     } else {
+      // Nicht auf Anfang springen, nur natürlich stehen bleiben.
       video.pause();
-      video.currentTime = 0;
     }
   }, [isStreaming, ttsState]);
 
@@ -81,6 +81,24 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [activeConversation?.messages, streamedContent]);
+
+
+  const scheduleSpeechSubmit = (spokenText: string) => {
+    const cleanText = spokenText.trim();
+    if (!cleanText || isStreaming) return;
+
+    if (speechSubmitTimerRef.current) {
+      clearTimeout(speechSubmitTimerRef.current);
+    }
+
+    lastSpeechTextRef.current = cleanText;
+    setInput("");
+    setInterimText("");
+    setAutoSpeak(true);
+
+    // Natürliches Gespräch: sofort senden, sobald die Spracheingabe final erkannt wurde.
+    sendMessage(cleanText);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
