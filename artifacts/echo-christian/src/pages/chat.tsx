@@ -10,6 +10,31 @@ import { Button } from "@/components/ui/button";
 export default function ChatPage() {
   const { speak, stop: stopTts, state: ttsState, playingId } = useTts();
 
+  const [echoClock, setEchoClock] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setEchoClock(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedTime = echoClock.toLocaleTimeString("de-AT", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  const formattedDate = echoClock.toLocaleDateString("de-AT", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+
+
   const avatarVideoRef = useRef<HTMLVideoElement | null>(null);
 
 
@@ -220,6 +245,33 @@ export default function ChatPage() {
               ? "bereitet Stimme vor..."
               : "wartet ruhig"}
           </div>
+        </div>
+      </div>
+
+
+      <div
+        data-echo-digital-clock
+        className="fixed left-4 top-4 z-50 hidden w-[210px] rounded-3xl border border-blue-400/35 bg-slate-950/85 p-4 shadow-[0_0_32px_rgba(59,130,246,0.28)] backdrop-blur-xl lg:block"
+      >
+        <div className="mb-2 flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_12px_rgba(96,165,250,0.9)]" />
+          <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-blue-200/70">
+            Systemzeit
+          </span>
+        </div>
+
+        <div className="font-mono text-3xl font-semibold tracking-widest text-blue-100 drop-shadow-[0_0_12px_rgba(96,165,250,0.65)]">
+          {formattedTime}
+        </div>
+
+        <div className="mt-2 border-t border-blue-400/15 pt-2 text-xs leading-relaxed text-blue-100/65">
+          {formattedDate}
+        </div>
+
+        <div className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-blue-400/50 to-transparent" />
+
+        <div className="mt-2 font-mono text-[9px] uppercase tracking-[0.24em] text-blue-300/45">
+          Echo online
         </div>
       </div>
 
