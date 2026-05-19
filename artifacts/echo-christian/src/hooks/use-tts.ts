@@ -25,7 +25,7 @@ export function useTts() {
     setPlayingId(id);
 
     try {
-      const response = await fetch("/api/tts", {
+      const response = await fetch("/.netlify/functions/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
