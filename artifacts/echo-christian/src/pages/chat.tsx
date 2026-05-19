@@ -251,9 +251,9 @@ export default function ChatPage() {
 
       <div
         data-echo-digital-clock
-        className="fixed left-4 top-4 z-50 hidden w-[210px] rounded-3xl border border-blue-400/35 bg-slate-950/85 p-4 shadow-[0_0_32px_rgba(59,130,246,0.28)] backdrop-blur-xl lg:block"
+        className="fixed left-4 top-4 z-50 hidden w-[230px] rounded-3xl border border-blue-400/35 bg-slate-950/85 p-4 text-center shadow-[0_0_32px_rgba(59,130,246,0.28)] backdrop-blur-xl lg:block"
       >
-        <div className="mb-2 flex items-center gap-2">
+        <div className="mb-2 flex items-center justify-center gap-2">
           <div className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_12px_rgba(96,165,250,0.9)]" />
           <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-blue-200/70">
             Systemzeit
@@ -268,10 +268,23 @@ export default function ChatPage() {
           {formattedDate}
         </div>
 
-        <div className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-blue-400/50 to-transparent" />
+        <div className="mx-auto mt-4 h-px w-full bg-gradient-to-r from-transparent via-blue-400/50 to-transparent" />
 
-        <div className="mt-2 font-mono text-[9px] uppercase tracking-[0.24em] text-blue-300/45">
-          Echo online
+        <div className="mt-4 flex w-full flex-col items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-950/35 px-3 py-3 shadow-[inset_0_0_18px_rgba(59,130,246,0.08)]">
+          <div className="font-mono text-[9px] uppercase tracking-[0.24em] text-blue-300/45">
+            Sprecher
+          </div>
+
+          <div className="mt-1 text-center font-mono text-sm font-semibold uppercase tracking-[0.18em] text-blue-100 drop-shadow-[0_0_10px_rgba(96,165,250,0.45)]">
+            Echo Christian
+          </div>
+
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-blue-200/50">
+              online
+            </span>
+          </div>
         </div>
       </div>
 
