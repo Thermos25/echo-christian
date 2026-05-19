@@ -130,16 +130,19 @@ export default function ChatPage() {
 
       <div
         data-echo-floating-avatar
-        className="fixed top-4 right-4 z-50 w-[150px] sm:w-[190px] rounded-3xl border border-blue-400/40 bg-slate-950/85 p-3 shadow-[0_0_35px_rgba(59,130,246,0.35)] backdrop-blur-xl"
+        className="fixed top-4 right-4 z-50 w-[170px] sm:w-[220px] rounded-3xl border border-blue-400/40 bg-slate-950/85 p-3 shadow-[0_0_35px_rgba(59,130,246,0.35)] backdrop-blur-xl"
       >
-        <div className="relative mx-auto mb-2 h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-full border border-blue-300/60 shadow-[0_0_28px_rgba(59,130,246,0.55)]">
-          <img
-            src="/echo-avatar.png"
-            alt="Echo Christian Avatar"
+        <div className="relative mx-auto mb-2 aspect-[3/4] w-full overflow-hidden rounded-2xl border border-blue-300/50 shadow-[0_0_30px_rgba(59,130,246,0.45)] bg-black">
+          <video
+            src="/echo-avatar-speaking.mp4"
             className="h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
           />
           {ttsState === "playing" && (
-            <div className="absolute inset-0 animate-pulse rounded-full ring-4 ring-blue-400/50" />
+            <div className="absolute inset-0 animate-pulse rounded-2xl ring-4 ring-blue-400/45" />
           )}
         </div>
 
@@ -153,7 +156,9 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <main className="flex-1 w-full max-w-4xl px-4 sm:px-6 flex flex-col relative z-10 overflow-hidden pb-4 pt-32 sm:pt-0">
+
+
+      <main className="flex-1 w-full max-w-4xl px-4 sm:px-6 flex flex-col relative z-10 overflow-hidden pb-4 pt-32 sm:pt-0 pt-40 sm:pt-0">
 
         {/* Avatar */}
         <div className="flex-shrink-0 flex justify-center py-6">
