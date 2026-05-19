@@ -547,7 +547,7 @@ export default function ChatPage() {
                 </div>
               ))}
             </div>
-          )
+          )}
           <form
             onSubmit={handleSubmit}
             className="relative flex items-end w-full glass-panel rounded-2xl p-1 transition-all duration-300"
