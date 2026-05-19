@@ -12,22 +12,6 @@ export default function ChatPage() {
 
   const avatarVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  useEffect(() => {
-    const video = avatarVideoRef.current;
-    if (!video) return;
-
-    if (ttsState === "playing") {
-      video.playbackRate = 1.18;
-      video.play().catch(() => {});
-    } else if (ttsState === "loading") {
-      video.playbackRate = 0.65;
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-      video.currentTime = 0;
-    }
-  }, [ttsState]);
-
 
 
   const [autoSpeak, setAutoSpeak] = useState(true);
@@ -48,6 +32,25 @@ export default function ChatPage() {
     isStreaming,
     isLoading
   } = useChat({ onResponseComplete: handleResponseComplete });
+
+  useEffect(() => {
+    const video = avatarVideoRef.current;
+    if (!video) return;
+
+    const echoIsAnswering = isStreaming || ttsState === "loading" || ttsState === "playing";
+
+    if (ttsState === "playing") {
+      video.playbackRate = 1.18;
+      video.play().catch(() => {});
+    } else if (echoIsAnswering) {
+      video.playbackRate = 0.82;
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+      video.currentTime = 0;
+    }
+  }, [isStreaming, ttsState]);
+
 
   const [input, setInput] = useState("");
   const [interimText, setInterimText] = useState("");
@@ -166,7 +169,7 @@ export default function ChatPage() {
 
           <div
             className={
-              ttsState === "playing"
+              ttsState === "playing" || isStreaming
                 ? "absolute inset-0 rounded-2xl ring-4 ring-blue-400/50 animate-pulse"
                 : "absolute inset-0 rounded-2xl ring-1 ring-blue-500/20"
             }
