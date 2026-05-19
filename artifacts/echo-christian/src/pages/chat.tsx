@@ -10,6 +10,26 @@ import { Button } from "@/components/ui/button";
 export default function ChatPage() {
   const { speak, stop: stopTts, state: ttsState, playingId } = useTts();
 
+  const avatarVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = avatarVideoRef.current;
+    if (!video) return;
+
+    if (ttsState === "playing") {
+      video.playbackRate = 1.18;
+      video.play().catch(() => {});
+    } else if (ttsState === "loading") {
+      video.playbackRate = 0.85;
+      video.play().catch(() => {});
+    } else {
+      video.playbackRate = 0.55;
+      video.play().catch(() => {});
+    }
+  }, [ttsState]);
+
+
+
   const [autoSpeak, setAutoSpeak] = useState(true);
   const autoSpeakRef = useRef(true);
   autoSpeakRef.current = autoSpeak;
@@ -128,12 +148,14 @@ export default function ChatPage() {
 
       {/* Main Chat Area */}
 
+
       <div
         data-echo-floating-avatar
-        className="fixed top-4 right-4 z-50 w-[170px] sm:w-[220px] rounded-3xl border border-blue-400/40 bg-slate-950/85 p-3 shadow-[0_0_35px_rgba(59,130,246,0.35)] backdrop-blur-xl"
+        className="fixed top-4 right-4 z-50 w-[172px] sm:w-[225px] rounded-3xl border border-blue-400/40 bg-slate-950/88 p-3 shadow-[0_0_38px_rgba(59,130,246,0.38)] backdrop-blur-xl"
       >
-        <div className="relative mx-auto mb-2 aspect-[3/4] w-full overflow-hidden rounded-2xl border border-blue-300/50 shadow-[0_0_30px_rgba(59,130,246,0.45)] bg-black">
+        <div className="relative mx-auto mb-2 aspect-[3/4] w-full overflow-hidden rounded-2xl border border-blue-300/50 bg-black shadow-[0_0_32px_rgba(59,130,246,0.45)]">
           <video
+            ref={avatarVideoRef}
             src="/echo-avatar-speaking.mp4"
             className="h-full w-full object-cover"
             autoPlay
@@ -141,24 +163,46 @@ export default function ChatPage() {
             loop
             playsInline
           />
+
+          <div
+            className={
+              ttsState === "playing"
+                ? "absolute inset-0 rounded-2xl ring-4 ring-blue-400/50 animate-pulse"
+                : "absolute inset-0 rounded-2xl ring-1 ring-blue-500/20"
+            }
+          />
+
           {ttsState === "playing" && (
-            <div className="absolute inset-0 animate-pulse rounded-2xl ring-4 ring-blue-400/45" />
+            <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-end gap-1">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <span
+                  key={i}
+                  className="block w-1 rounded-full bg-blue-300/90 animate-pulse"
+                  style={{
+                    height: `${8 + (i % 3) * 7}px`,
+                    animationDelay: `${i * 0.12}s`,
+                  }}
+                />
+              ))}
+            </div>
           )}
         </div>
 
         <div className="text-center">
-          <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-blue-200/80">
+          <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-blue-200/85">
             Echo Christian
           </div>
-          <div className="mt-1 text-[11px] text-blue-100/70">
-            {ttsState === "playing" ? "spricht gerade..." : "ist präsent"}
+          <div className="mt-1 text-[11px] text-blue-100/75">
+            {ttsState === "playing"
+              ? "spricht gerade..."
+              : ttsState === "loading"
+              ? "bereitet Stimme vor..."
+              : "ist präsent"}
           </div>
         </div>
       </div>
 
-
-
-      <main className="flex-1 w-full max-w-4xl px-4 sm:px-6 flex flex-col relative z-10 overflow-hidden pb-4 pt-32 sm:pt-0 pt-40 sm:pt-0">
+      <main className="flex-1 w-full max-w-4xl px-4 sm:px-6 flex flex-col relative z-10 overflow-hidden pb-4 pt-32 sm:pt-0 pt-40 sm:pt-0 pt-44 sm:pt-0">
 
         {/* Avatar */}
         <div className="flex-shrink-0 flex justify-center py-6">
