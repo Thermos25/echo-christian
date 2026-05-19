@@ -1,12 +1,24 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Plus, Terminal, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { Send, Plus, Terminal, Volume2, VolumeX, Loader2, Mic, MicOff } from "lucide-react";
 import { useChat } from "@/hooks/use-chat";
 import { useTts } from "@/hooks/use-tts";
 import { EchoAvatar } from "@/components/EchoAvatar";
 import { Button } from "@/components/ui/button";
 
 export default function ChatPage() {
+  const { speak, stop, state: ttsState, playingId } = useTts();
+
+  const [autoSpeak, setAutoSpeak] = useState(true);
+  const autoSpeakRef = useRef(true);
+  autoSpeakRef.current = autoSpeak;
+
+  const handleResponseComplete = useCallback((content: string) => {
+    if (autoSpeakRef.current) {
+      speak(content, "auto");
+    }
+  }, [speak]);
+
   const {
     activeConversation,
     startNewConversation,
@@ -14,12 +26,9 @@ export default function ChatPage() {
     streamedContent,
     isStreaming,
     isLoading
-  } = useChat();
-
-  const { speak, state: ttsState, playingId } = useTts();
+  } = useChat({ onResponseComplete: handleResponseComplete });
 
   const [input, setInput] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -35,6 +44,11 @@ export default function ChatPage() {
     if (!input.trim() || isStreaming) return;
     sendMessage(input.trim());
     setInput("");
+  };
+
+  const toggleAutoSpeak = () => {
+    if (autoSpeak && ttsState === "playing") stop();
+    setAutoSpeak(v => !v);
   };
 
   return (
@@ -56,27 +70,67 @@ export default function ChatPage() {
             <p className="text-xs text-primary/70 tracking-widest uppercase">Your AI Twin</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={startNewConversation}
-          className="glass-panel border-primary/30 hover:border-primary/60 text-primary hover:text-primary-foreground hover:bg-primary transition-all duration-300"
-          data-testid="button-new-conversation"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Initialize Sync
-        </Button>
+
+        <div className="flex items-center gap-3">
+          {/* Auto-speak toggle */}
+          <button
+            onClick={toggleAutoSpeak}
+            data-testid="button-toggle-autospeak"
+            title={autoSpeak ? "Auto-speak on — click to mute" : "Auto-speak off — click to enable"}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass-panel border transition-all duration-200"
+            style={{
+              borderColor: autoSpeak ? "rgba(59,130,246,0.5)" : "rgba(59,130,246,0.15)",
+              color: autoSpeak ? "rgba(59,130,246,1)" : "rgba(59,130,246,0.35)",
+              boxShadow: autoSpeak ? "0 0 10px rgba(59,130,246,0.2)" : "none",
+            }}
+          >
+            {autoSpeak ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
+            <span className="text-[10px] font-mono uppercase tracking-wider">
+              {autoSpeak ? "Voice On" : "Voice Off"}
+            </span>
+          </button>
+
+          <Button
+            variant="outline"
+            onClick={startNewConversation}
+            className="glass-panel border-primary/30 hover:border-primary/60 text-primary hover:text-primary-foreground hover:bg-primary transition-all duration-300"
+            data-testid="button-new-conversation"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Initialize Sync
+          </Button>
+        </div>
       </header>
 
       {/* Main Chat Area */}
       <main className="flex-1 w-full max-w-4xl px-4 sm:px-6 flex flex-col relative z-10 overflow-hidden pb-4">
 
-        {/* Avatar Display */}
+        {/* Avatar */}
         <div className="flex-shrink-0 flex justify-center py-6">
-          <EchoAvatar />
+          <div className="relative">
+            <EchoAvatar />
+            {/* Speaking indicator */}
+            {ttsState === "playing" && (
+              <motion.div
+                className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {[0, 1, 2, 3].map(i => (
+                  <motion.div
+                    key={i}
+                    className="w-0.5 rounded-full bg-primary"
+                    animate={{ height: ["4px", "12px", "4px"] }}
+                    transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1, ease: "easeInOut" }}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto w-full pr-2 pb-2 scrollbar-hide" ref={scrollRef}>
+        <div className="flex-1 overflow-y-auto w-full pr-2 pb-2 scrollbar-hide">
           <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto pb-4">
 
             {!isLoading && activeConversation?.messages?.length === 0 && (
@@ -116,14 +170,16 @@ export default function ChatPage() {
                       {msg.role === "assistant" && (
                         <div className="mt-3 pt-2 border-t border-primary/10">
                           <button
-                            onClick={() => speak(msg.content, msgId)}
-                            disabled={ttsState === "loading" && playingId !== msgId}
+                            onClick={() =>
+                              isThisPlaying ? stop() : speak(msg.content, msgId)
+                            }
+                            disabled={ttsState === "loading" && !isThisLoading}
                             data-testid={`button-speak-${msg.id}`}
-                            className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider transition-all duration-200 disabled:opacity-30"
+                            className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider transition-all duration-200 disabled:opacity-30 hover:opacity-100"
                             style={{
                               color: isThisPlaying
                                 ? "rgba(59,130,246,1)"
-                                : "rgba(59,130,246,0.5)",
+                                : "rgba(59,130,246,0.45)",
                             }}
                           >
                             {isThisLoading ? (
@@ -153,9 +209,12 @@ export default function ChatPage() {
                 <div className="max-w-[85%] sm:max-w-[75%] p-4 glass-panel rounded-2xl rounded-tl-none border-primary/40 shadow-[0_0_15px_rgba(59,130,246,0.15)] text-foreground/90 leading-relaxed font-sans">
                   <div className="flex items-center gap-2 mb-2 opacity-80">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-primary">SYNTHESIZING...</span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-primary">Synthesizing...</span>
                   </div>
-                  <div className="whitespace-pre-wrap">{streamedContent}<span className="inline-block w-2 h-4 ml-1 bg-primary animate-pulse align-middle" /></div>
+                  <div className="whitespace-pre-wrap">
+                    {streamedContent}
+                    <span className="inline-block w-2 h-4 ml-1 bg-primary animate-pulse align-middle" />
+                  </div>
                 </div>
               </motion.div>
             )}

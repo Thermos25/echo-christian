@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { 
-  useListOpenaiConversations, 
-  useCreateOpenaiConversation, 
-  useGetOpenaiConversation, 
-  useDeleteOpenaiConversation,
+import {
+  useListOpenaiConversations,
+  useCreateOpenaiConversation,
+  useGetOpenaiConversation,
   getGetOpenaiConversationQueryKey
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,16 +15,22 @@ export interface StreamMessage {
   content: string;
 }
 
-export function useChat() {
+interface UseChatOptions {
+  onResponseComplete?: (content: string) => void;
+}
+
+export function useChat({ onResponseComplete }: UseChatOptions = {}) {
   const queryClient = useQueryClient();
-  
+
   const { data: conversations, isLoading: isConversationsLoading } = useListOpenaiConversations();
   const createConversation = useCreateOpenaiConversation();
-  const deleteConversation = useDeleteOpenaiConversation();
 
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [streamedContent, setStreamedContent] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+
+  const onResponseCompleteRef = useRef(onResponseComplete);
+  onResponseCompleteRef.current = onResponseComplete;
 
   // Auto-create or select first conversation on load
   useEffect(() => {
@@ -44,7 +49,7 @@ export function useChat() {
   }, [conversations, isConversationsLoading, activeConversationId, createConversation.isPending, queryClient, createConversation]);
 
   const { data: activeConversation } = useGetOpenaiConversation(
-    activeConversationId as number, 
+    activeConversationId as number,
     { query: { enabled: !!activeConversationId, queryKey: getGetOpenaiConversationQueryKey(activeConversationId as number) } }
   );
 
@@ -60,7 +65,6 @@ export function useChat() {
   const sendMessage = useCallback(async (content: string) => {
     if (!activeConversationId || !content.trim()) return;
 
-    // Optimistically update the UI by adding a temporary user message
     const tempUserMsg = {
       id: Date.now(),
       conversationId: activeConversationId,
@@ -68,13 +72,10 @@ export function useChat() {
       content,
       createdAt: new Date().toISOString()
     };
-    
+
     queryClient.setQueryData(getGetOpenaiConversationQueryKey(activeConversationId), (old: any) => {
       if (!old) return old;
-      return {
-        ...old,
-        messages: [...old.messages, tempUserMsg]
-      };
+      return { ...old, messages: [...old.messages, tempUserMsg] };
     });
 
     setIsStreaming(true);
@@ -82,24 +83,24 @@ export function useChat() {
 
     try {
       const response = await fetch(`/api/openai/conversations/${activeConversationId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
       });
-      
+
       if (!response.body) throw new Error("No response body");
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let echoContent = '';
+      let echoContent = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         const text = decoder.decode(value);
-        const lines = text.split('\n').filter(l => l.startsWith('data: '));
-        
+        const lines = text.split("\n").filter(l => l.startsWith("data: "));
+
         for (const line of lines) {
           try {
             const data = JSON.parse(line.slice(6));
@@ -108,14 +109,17 @@ export function useChat() {
               echoContent += data.content;
               setStreamedContent(echoContent);
             }
-          } catch (e) {
-            console.error("Failed to parse SSE line", line);
+          } catch {
+            // ignore parse errors on partial chunks
           }
         }
       }
 
-      // Invalidate to fetch the final stored messages
       queryClient.invalidateQueries({ queryKey: getGetOpenaiConversationQueryKey(activeConversationId) });
+
+      if (echoContent) {
+        onResponseCompleteRef.current?.(echoContent);
+      }
     } catch (err) {
       console.error("Failed to send message", err);
     } finally {
