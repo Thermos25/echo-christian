@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Send, Plus, Terminal, Volume2, VolumeX, Loader2, Mic, MicOff } from "lucide-react";
 import { useChat } from "@/hooks/use-chat";
 import { useTts } from "@/hooks/use-tts";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { EchoAvatar } from "@/components/EchoAvatar";
 import { Button } from "@/components/ui/button";
 
 export default function ChatPage() {
-  const { speak, stop, state: ttsState, playingId } = useTts();
+  const { speak, stop: stopTts, state: ttsState, playingId } = useTts();
 
   const [autoSpeak, setAutoSpeak] = useState(true);
   const autoSpeakRef = useRef(true);
@@ -29,7 +30,26 @@ export default function ChatPage() {
   } = useChat({ onResponseComplete: handleResponseComplete });
 
   const [input, setInput] = useState("");
+  const [interimText, setInterimText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef2 = useRef(input);
+  inputRef2.current = input;
+
+  const { state: micState, isSupported: micSupported, toggle: toggleMic, stop: stopMic } = useSpeechRecognition({
+    lang: "de-DE",
+    onTranscript: useCallback((text: string, isFinal: boolean) => {
+      if (isFinal) {
+        setInterimText("");
+        setInput(prev => {
+          const trimmed = prev.trim();
+          return trimmed ? `${trimmed} ${text.trim()}` : text.trim();
+        });
+      } else {
+        setInterimText(text);
+      }
+    }, []),
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -41,19 +61,26 @@ export default function ChatPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isStreaming) return;
-    sendMessage(input.trim());
+    const text = input.trim();
+    if (!text || isStreaming) return;
+    if (micState === "listening") stopMic();
+    setInterimText("");
+    sendMessage(text);
     setInput("");
   };
 
   const toggleAutoSpeak = () => {
-    if (autoSpeak && ttsState === "playing") stop();
+    if (autoSpeak && ttsState === "playing") stopTts();
     setAutoSpeak(v => !v);
   };
 
+  const displayValue = interimText
+    ? `${input}${input ? " " : ""}${interimText}`
+    : input;
+
   return (
     <div className="min-h-screen w-full flex flex-col items-center bg-background text-foreground overflow-hidden">
-      {/* Background ambient effects */}
+      {/* Background ambient */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50" />
         <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50" />
@@ -70,13 +97,11 @@ export default function ChatPage() {
             <p className="text-xs text-primary/70 tracking-widest uppercase">Your AI Twin</p>
           </div>
         </div>
-
         <div className="flex items-center gap-3">
-          {/* Auto-speak toggle */}
           <button
             onClick={toggleAutoSpeak}
             data-testid="button-toggle-autospeak"
-            title={autoSpeak ? "Auto-speak on — click to mute" : "Auto-speak off — click to enable"}
+            title={autoSpeak ? "Auto-speak on" : "Auto-speak off"}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass-panel border transition-all duration-200"
             style={{
               borderColor: autoSpeak ? "rgba(59,130,246,0.5)" : "rgba(59,130,246,0.15)",
@@ -89,7 +114,6 @@ export default function ChatPage() {
               {autoSpeak ? "Voice On" : "Voice Off"}
             </span>
           </button>
-
           <Button
             variant="outline"
             onClick={startNewConversation}
@@ -109,7 +133,6 @@ export default function ChatPage() {
         <div className="flex-shrink-0 flex justify-center py-6">
           <div className="relative">
             <EchoAvatar />
-            {/* Speaking indicator */}
             {ttsState === "playing" && (
               <motion.div
                 className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1"
@@ -171,15 +194,13 @@ export default function ChatPage() {
                         <div className="mt-3 pt-2 border-t border-primary/10">
                           <button
                             onClick={() =>
-                              isThisPlaying ? stop() : speak(msg.content, msgId)
+                              isThisPlaying ? stopTts() : speak(msg.content, msgId)
                             }
                             disabled={ttsState === "loading" && !isThisLoading}
                             data-testid={`button-speak-${msg.id}`}
                             className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider transition-all duration-200 disabled:opacity-30 hover:opacity-100"
                             style={{
-                              color: isThisPlaying
-                                ? "rgba(59,130,246,1)"
-                                : "rgba(59,130,246,0.45)",
+                              color: isThisPlaying ? "rgba(59,130,246,1)" : "rgba(59,130,246,0.45)",
                             }}
                           >
                             {isThisLoading ? (
@@ -227,35 +248,125 @@ export default function ChatPage() {
         <div className="w-full max-w-3xl mx-auto mt-4">
           <form
             onSubmit={handleSubmit}
-            className="relative flex items-end w-full glass-panel rounded-2xl p-1 glow-border focus-within:shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all duration-300"
+            className="relative flex items-end w-full glass-panel rounded-2xl p-1 transition-all duration-300"
+            style={{
+              border: micState === "listening"
+                ? "1px solid rgba(59,130,246,0.6)"
+                : "1px solid rgba(59,130,246,0.2)",
+              boxShadow: micState === "listening"
+                ? "0 0 25px rgba(59,130,246,0.35), inset 0 0 15px rgba(59,130,246,0.05)"
+                : "none",
+            }}
           >
             <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
+              ref={inputRef}
+              value={displayValue}
+              onChange={(e) => {
+                setInterimText("");
+                setInput(e.target.value);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   handleSubmit(e);
                 }
               }}
-              placeholder="Transmit your thoughts..."
+              placeholder={
+                micState === "listening"
+                  ? "Spreche jetzt..."
+                  : "Transmit your thoughts..."
+              }
               className="w-full max-h-32 min-h-[56px] py-4 px-4 bg-transparent border-none focus:ring-0 resize-none text-foreground placeholder:text-muted-foreground font-mono text-sm leading-relaxed"
+              style={{
+                color: interimText ? "rgba(255,255,255,0.45)" : undefined,
+              }}
               rows={1}
               disabled={isStreaming}
               data-testid="input-chat"
             />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!input.trim() || isStreaming}
-              className="absolute right-2 bottom-2 h-10 w-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_10px_rgba(59,130,246,0.4)] disabled:opacity-50 disabled:shadow-none transition-all duration-300"
-              data-testid="button-submit-chat"
-            >
-              <Send className="w-5 h-5" />
-            </Button>
+
+            {/* Button row */}
+            <div className="absolute right-2 bottom-2 flex items-center gap-1.5">
+              {/* Mic button */}
+              {micSupported && (
+                <motion.button
+                  type="button"
+                  onClick={toggleMic}
+                  disabled={isStreaming}
+                  data-testid="button-mic"
+                  title={micState === "listening" ? "Mikrofon stoppen" : "Mikrofon starten"}
+                  className="relative h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 disabled:opacity-40"
+                  style={{
+                    background: micState === "listening"
+                      ? "rgba(59,130,246,0.25)"
+                      : "rgba(59,130,246,0.08)",
+                    border: micState === "listening"
+                      ? "1px solid rgba(59,130,246,0.7)"
+                      : "1px solid rgba(59,130,246,0.25)",
+                    boxShadow: micState === "listening"
+                      ? "0 0 16px rgba(59,130,246,0.5)"
+                      : "none",
+                    color: micState === "listening"
+                      ? "rgba(59,130,246,1)"
+                      : "rgba(59,130,246,0.5)",
+                  }}
+                  animate={micState === "listening" ? { scale: [1, 1.04, 1] } : { scale: 1 }}
+                  transition={{ duration: 1.2, repeat: micState === "listening" ? Infinity : 0, ease: "easeInOut" }}
+                >
+                  {micState === "listening" ? (
+                    <Mic className="w-4 h-4" />
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
+                  {/* Pulse ring when listening */}
+                  {micState === "listening" && (
+                    <motion.span
+                      className="absolute inset-0 rounded-xl"
+                      style={{ border: "1px solid rgba(59,130,246,0.5)" }}
+                      animate={{ scale: [1, 1.5], opacity: [0.6, 0] }}
+                      transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
+                    />
+                  )}
+                </motion.button>
+              )}
+
+              {/* Send button */}
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!input.trim() || isStreaming}
+                className="h-10 w-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_10px_rgba(59,130,246,0.4)] disabled:opacity-50 disabled:shadow-none transition-all duration-300"
+                data-testid="button-submit-chat"
+              >
+                <Send className="w-5 h-5" />
+              </Button>
+            </div>
           </form>
-          <div className="text-center mt-3 opacity-40">
-            <span className="text-[10px] font-mono uppercase tracking-widest">End-to-end encrypted neural channel</span>
+
+          {/* Mic status hint */}
+          <div className="flex items-center justify-center mt-3 gap-2 opacity-40">
+            {micState === "listening" && (
+              <motion.div
+                className="flex items-center gap-1"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                {[0, 1, 2].map(i => (
+                  <motion.div
+                    key={i}
+                    className="w-0.5 h-2 rounded-full bg-primary"
+                    animate={{ height: ["4px", "10px", "4px"] }}
+                    transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.12, ease: "easeInOut" }}
+                  />
+                ))}
+                <span className="text-[10px] font-mono uppercase tracking-widest ml-1 text-primary" style={{ opacity: 1 }}>
+                  Höre zu...
+                </span>
+              </motion.div>
+            )}
+            {micState !== "listening" && (
+              <span className="text-[10px] font-mono uppercase tracking-widest">End-to-end encrypted neural channel</span>
+            )}
           </div>
         </div>
       </main>
