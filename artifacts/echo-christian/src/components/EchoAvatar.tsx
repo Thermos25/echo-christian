@@ -69,10 +69,9 @@ export function EchoAvatar() {
         }}
       >
         <video
-          src="/heiler-echo-avatar.mp4?v=heiler2"
+          src="/heiler-echo-avatar.mp4?v=heiler3"
           className="w-full h-full object-cover object-top"
           muted
-          loop
           playsInline
           preload="metadata"
         />

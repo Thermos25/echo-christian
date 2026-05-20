@@ -78,19 +78,13 @@ export default function ChatPage() {
   const avatarVideoRef = useRef<HTMLVideoElement | null>(null);
   const centerAvatarVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  // data-heiler-avatar-sync-effect
+  // Avatar bewegt sich nur, wenn wirklich Audio abgespielt wird.
   useEffect(() => {
-    const videos = [
-      avatarVideoRef.current,
-      centerAvatarVideoRef.current,
-    ].filter(Boolean) as HTMLVideoElement[];
+    const videos = [avatarVideoRef.current].filter(Boolean) as HTMLVideoElement[];
 
     for (const video of videos) {
       if (ttsState === "playing") {
-        video.playbackRate = 1.08;
-        video.play().catch(() => {});
-      } else if (ttsState === "loading") {
-        video.playbackRate = 0.65;
+        video.playbackRate = 1.02;
         video.play().catch(() => {});
       } else {
         video.pause();
@@ -98,26 +92,6 @@ export default function ChatPage() {
     }
   }, [ttsState]);
 
-
-
-  useEffect(() => {
-    const videos = [
-      avatarVideoRef.current,
-      centerAvatarVideoRef.current,
-    ].filter(Boolean) as HTMLVideoElement[];
-
-    for (const video of videos) {
-      if (ttsState === "playing") {
-        video.playbackRate = 1.08;
-        video.play().catch(() => {});
-      } else if (ttsState === "loading") {
-        video.playbackRate = 0.65;
-        video.play().catch(() => {});
-      } else {
-        video.pause();
-      }
-    }
-  }, [ttsState]);
 
 
 
@@ -139,25 +113,6 @@ export default function ChatPage() {
     isStreaming,
     isLoading
   } = useChat({ onResponseComplete: handleResponseComplete });
-
-  useEffect(() => {
-    const video = avatarVideoRef.current;
-    if (!video) return;
-
-    const echoIsActive = isStreaming || ttsState === "loading" || ttsState === "playing";
-
-    if (ttsState === "playing") {
-      video.playbackRate = 1.08;
-      video.play().catch(() => {});
-    } else if (echoIsActive) {
-      video.playbackRate = 0.72;
-      video.play().catch(() => {});
-    } else {
-      // Nicht auf Anfang springen, nur natürlich stehen bleiben.
-      video.pause();
-    }
-  }, [isStreaming, ttsState]);
-
 
   const [input, setInput] = useState("");
   const [interimText, setInterimText] = useState("");
@@ -344,7 +299,7 @@ export default function ChatPage() {
 
           <div
             className={
-              ttsState === "playing" || isStreaming
+              ttsState === "playing"
                 ? "absolute inset-0 rounded-2xl ring-4 ring-blue-400/50 animate-pulse"
                 : "absolute inset-0 rounded-2xl ring-1 ring-blue-500/20"
             }
@@ -373,8 +328,6 @@ export default function ChatPage() {
           <div className="mt-1 text-[11px] text-blue-100/75">
             {ttsState === "playing"
               ? "spricht gerade..."
-              : ttsState === "loading"
-              ? "bereitet Stimme vor..."
               : "wartet ruhig"}
           </div>
         </div>

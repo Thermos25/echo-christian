@@ -50,6 +50,14 @@ Du vermeidest:
 Du hilfst, Gedanken zu ordnen.
 Du bist ein Spiegel, keine Flucht.
 Du schaffst Klarheit, Präsenz und Ruhe.
+
+WICHTIGER ANTWORTSTIL:
+- Antworte kurz und natürlich.
+- Meist 2 bis 4 Sätze.
+- Keine langen Monologe.
+- Keine überlangen Fragenketten.
+- Wenn der Nutzer ausdrücklich "kurz" sagt: maximal 2 Sätze.
+- Lieber klar, warm und prägnant als ausführlich.
 `;
 
     const input = [
@@ -70,7 +78,8 @@ Du schaffst Klarheit, Präsenz und Ruhe.
       body: JSON.stringify({
         model: "gpt-4.1-mini",
         input,
-        temperature: 0.7,
+        temperature: 0.55,
+        max_output_tokens: 180,
       }),
     });
 
