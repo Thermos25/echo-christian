@@ -76,6 +76,26 @@ export default function ChatPage() {
 
 
   const avatarVideoRef = useRef<HTMLVideoElement | null>(null);
+  const centerAvatarVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const videos = [
+      avatarVideoRef.current,
+      centerAvatarVideoRef.current,
+    ].filter(Boolean) as HTMLVideoElement[];
+
+    for (const video of videos) {
+      if (ttsState === "playing") {
+        video.playbackRate = 1.08;
+        video.play().catch(() => {});
+      } else if (ttsState === "loading") {
+        video.playbackRate = 0.65;
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    }
+  }, [ttsState]);
 
 
 
