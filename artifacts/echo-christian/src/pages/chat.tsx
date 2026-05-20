@@ -76,32 +76,32 @@ export default function ChatPage() {
 
 
   const avatarVideoRef = useRef<HTMLVideoElement | null>(null);
-  const centerAvatarVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  
-  // Avatar spricht/bewegt sich exakt während der Text sichtbar geschrieben wird.
-  useEffect(() => {
-    const video = avatarVideoRef.current;
-    if (!video) return;
-
-    if (isStreaming && !isEchoPaused) {
-      video.playbackRate = 1.03;
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-
-      // Zurück auf ruhiges Anfangsbild, damit kein offener Mund stehen bleibt.
-      try {
-        video.currentTime = 0;
-      } catch {
-        // ignorieren
-      }
+  const [autoSpeak, setAutoSpeak] = useState(() => {
+    try {
+      return localStorage.getItem("echo-christian-auto-speak") !== "false";
+    } catch {
+      return true;
     }
-  }, [isStreaming, isEchoPaused]);
+  });
 
-const [autoSpeak, setAutoSpeak] = useState(true);
-  const autoSpeakRef = useRef(true);
+  const [isEchoPaused, setIsEchoPaused] = useState(false);
+
+  const autoSpeakRef = useRef(autoSpeak);
+  const isEchoPausedRef = useRef(isEchoPaused);
+  const speechSubmitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSpeechTextRef = useRef("");
+
   autoSpeakRef.current = autoSpeak;
+  isEchoPausedRef.current = isEchoPaused;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("echo-christian-auto-speak", String(autoSpeak));
+    } catch {
+      // ignorieren
+    }
+  }, [autoSpeak]);
 
   const handleResponseComplete = useCallback((content: string) => {
     if (autoSpeakRef.current && !isEchoPausedRef.current) {
@@ -117,6 +117,25 @@ const [autoSpeak, setAutoSpeak] = useState(true);
     isStreaming,
     isLoading
   } = useChat({ onResponseComplete: handleResponseComplete });
+
+  // Avatar bewegt sich exakt während Echo sichtbar schreibt.
+  useEffect(() => {
+    const video = avatarVideoRef.current;
+    if (!video) return;
+
+    if (isStreaming && !isEchoPaused) {
+      video.playbackRate = 1.03;
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+
+      try {
+        video.currentTime = 0;
+      } catch {
+        // ignorieren
+      }
+    }
+  }, [isStreaming, isEchoPaused]);
 
   const [input, setInput] = useState("");
   const [interimText, setInterimText] = useState("");
@@ -227,9 +246,50 @@ const [autoSpeak, setAutoSpeak] = useState(true);
     setInput("");
   };
 
+  const pauseEcho = () => {
+    stopTts();
+    setIsEchoPaused(true);
+    setAutoSpeak(false);
+
+    const video = avatarVideoRef.current;
+    if (video) {
+      video.pause();
+
+      try {
+        video.currentTime = 0;
+      } catch {
+        // ignorieren
+      }
+    }
+  };
+
   const toggleAutoSpeak = () => {
-    if (autoSpeak && isStreaming) stopTts();
-    setAutoSpeak(v => !v);
+    if (ttsState === "playing") {
+      stopTts();
+    }
+
+    setAutoSpeak((current) => {
+      const next = !current;
+
+      if (next) {
+        setIsEchoPaused(false);
+      } else {
+        stopTts();
+
+        const video = avatarVideoRef.current;
+        if (video) {
+          video.pause();
+
+          try {
+            video.currentTime = 0;
+          } catch {
+            // ignorieren
+          }
+        }
+      }
+
+      return next;
+    });
   };
 
   const displayValue = interimText
@@ -310,7 +370,7 @@ const [autoSpeak, setAutoSpeak] = useState(true);
             }
           />
 
-          {isStreaming && (
+          {isStreaming && !isEchoPaused && (
             <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-end gap-1">
               {[0, 1, 2, 3, 4].map((i) => (
                 <span
