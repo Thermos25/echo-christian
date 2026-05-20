@@ -263,6 +263,22 @@ export default function ChatPage() {
     }
   };
 
+  const pauseEcho = () => {
+    stopTts();
+    setIsEchoPaused(true);
+    setAutoSpeak(false);
+
+    const video = avatarVideoRef.current;
+    if (video) {
+      video.pause();
+      try {
+        video.currentTime = 0;
+      } catch {
+        // ignorieren
+      }
+    }
+  };
+
   const toggleAutoSpeak = () => {
     if (ttsState === "playing") {
       stopTts();
@@ -279,7 +295,6 @@ export default function ChatPage() {
         const video = avatarVideoRef.current;
         if (video) {
           video.pause();
-
           try {
             video.currentTime = 0;
           } catch {
@@ -316,6 +331,22 @@ export default function ChatPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={pauseEcho}
+            data-testid="button-pause-echo-header"
+            title="Echo sofort pausieren"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass-panel border transition-all duration-200"
+            style={{
+              borderColor: "rgba(245,158,11,0.55)",
+              color: "rgba(251,191,36,1)",
+              boxShadow: "0 0 10px rgba(245,158,11,0.18)",
+            }}
+          >
+            <span className="text-[10px] font-mono uppercase tracking-wider">
+              Pause
+            </span>
+          </button>
+
           <button
             onClick={toggleAutoSpeak}
             data-testid="button-toggle-autospeak"
