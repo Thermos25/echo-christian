@@ -78,24 +78,28 @@ export default function ChatPage() {
   const avatarVideoRef = useRef<HTMLVideoElement | null>(null);
   const centerAvatarVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Avatar bewegt sich nur, wenn wirklich Audio abgespielt wird.
+  
+  // Avatar spricht/bewegt sich exakt während der Text sichtbar geschrieben wird.
   useEffect(() => {
-    const videos = [avatarVideoRef.current].filter(Boolean) as HTMLVideoElement[];
+    const video = avatarVideoRef.current;
+    if (!video) return;
 
-    for (const video of videos) {
-      if (ttsState === "playing") {
-        video.playbackRate = 1.02;
-        video.play().catch(() => {});
-      } else {
-        video.pause();
+    if (isStreaming) {
+      video.playbackRate = 1.03;
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+
+      // Zurück auf ruhiges Anfangsbild, damit kein offener Mund stehen bleibt.
+      try {
+        video.currentTime = 0;
+      } catch {
+        // ignorieren
       }
     }
-  }, [ttsState]);
+  }, [isStreaming]);
 
-
-
-
-  const [autoSpeak, setAutoSpeak] = useState(true);
+const [autoSpeak, setAutoSpeak] = useState(true);
   const autoSpeakRef = useRef(true);
   autoSpeakRef.current = autoSpeak;
 
@@ -223,7 +227,7 @@ export default function ChatPage() {
   };
 
   const toggleAutoSpeak = () => {
-    if (autoSpeak && ttsState === "playing") stopTts();
+    if (autoSpeak && isStreaming) stopTts();
     setAutoSpeak(v => !v);
   };
 
@@ -289,7 +293,7 @@ export default function ChatPage() {
         <div className="relative mx-auto mb-2 aspect-[3/4] w-full overflow-hidden rounded-2xl border border-blue-300/50 bg-black shadow-[0_0_32px_rgba(59,130,246,0.45)]">
           <video
             ref={avatarVideoRef}
-            src="/heiler-echo-avatar.mp4?v=heiler2"
+            src="/heiler-echo-avatar.mp4?v=sync-text-1"
             className="h-full w-full object-cover"
             muted
             loop
@@ -299,13 +303,13 @@ export default function ChatPage() {
 
           <div
             className={
-              ttsState === "playing"
+              isStreaming
                 ? "absolute inset-0 rounded-2xl ring-4 ring-blue-400/50 animate-pulse"
                 : "absolute inset-0 rounded-2xl ring-1 ring-blue-500/20"
             }
           />
 
-          {ttsState === "playing" && (
+          {isStreaming && (
             <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-end gap-1">
               {[0, 1, 2, 3, 4].map((i) => (
                 <span
@@ -326,8 +330,8 @@ export default function ChatPage() {
             Echo Christian
           </div>
           <div className="mt-1 text-[11px] text-blue-100/75">
-            {ttsState === "playing"
-              ? "spricht gerade..."
+            {isStreaming
+              ? "schreibt gerade..."
               : "wartet ruhig"}
           </div>
         </div>
@@ -378,8 +382,8 @@ export default function ChatPage() {
         {/* Avatar */}
         <div className="flex-shrink-0 flex justify-center py-6">
           <div className="relative">
-            <EchoAvatar />
-            {ttsState === "playing" && (
+            <EchoAvatar active={isStreaming} />
+            {isStreaming && (
               <motion.div
                 className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1"
                 initial={{ opacity: 0, y: 4 }}

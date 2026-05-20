@@ -52,12 +52,12 @@ Du bist ein Spiegel, keine Flucht.
 Du schaffst Klarheit, Präsenz und Ruhe.
 
 WICHTIGER ANTWORTSTIL:
-- Antworte kurz und natürlich.
-- Meist 2 bis 4 Sätze.
-- Keine langen Monologe.
-- Keine überlangen Fragenketten.
-- Wenn der Nutzer ausdrücklich "kurz" sagt: maximal 2 Sätze.
-- Lieber klar, warm und prägnant als ausführlich.
+- Antworte kurz, klar und warm.
+- Normalfall: maximal 2 bis 3 kurze Sätze.
+- Keine langen Erklärungen.
+- Keine langen Fragenketten.
+- Stelle höchstens eine Frage.
+- Wenn Christian um Kürze bittet: maximal 2 Sätze.
 `;
 
     const input = [
@@ -78,8 +78,8 @@ WICHTIGER ANTWORTSTIL:
       body: JSON.stringify({
         model: "gpt-4.1-mini",
         input,
-        temperature: 0.55,
-        max_output_tokens: 180,
+        temperature: 0.45,
+        max_output_tokens: 95,
       }),
     });
 
