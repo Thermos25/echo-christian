@@ -16,6 +16,7 @@ export function EchoAvatar() {
           ease: "easeInOut",
         }}
       />
+
       {/* Spinning dashed ring */}
       <motion.div
         className="absolute inset-3 rounded-full border-2 border-dashed border-primary/40"
@@ -26,7 +27,8 @@ export function EchoAvatar() {
           ease: "linear",
         }}
       />
-      {/* Glow halo behind photo */}
+
+      {/* Glow halo behind avatar */}
       <motion.div
         className="absolute inset-6 rounded-full"
         style={{
@@ -44,9 +46,10 @@ export function EchoAvatar() {
           ease: "easeInOut",
         }}
       />
-      {/* Photo circle */}
+
+      {/* Heiler Echo video circle */}
       <motion.div
-        className="relative z-10 w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden"
+        className="relative z-10 w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden bg-black"
         style={{
           border: "2px solid rgba(59,130,246,0.6)",
           boxShadow:
@@ -65,11 +68,13 @@ export function EchoAvatar() {
           ease: "easeInOut",
         }}
       >
-        <img
-          src="/echo-avatar.png"
-          alt="ECHO CHRISTIAN"
+        <video
+          src="/heiler-echo-avatar.mp4?v=heiler2"
           className="w-full h-full object-cover object-top"
-          style={{ filter: "brightness(1.05) contrast(1.05) saturate(0.9)" }}
+          muted
+          loop
+          playsInline
+          preload="metadata"
         />
       </motion.div>
     </div>

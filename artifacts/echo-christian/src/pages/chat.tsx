@@ -334,7 +334,7 @@ export default function ChatPage() {
         <div className="relative mx-auto mb-2 aspect-[3/4] w-full overflow-hidden rounded-2xl border border-blue-300/50 bg-black shadow-[0_0_32px_rgba(59,130,246,0.45)]">
           <video
             ref={avatarVideoRef}
-            src="/heiler-echo-avatar.mp4"
+            src="/heiler-echo-avatar.mp4?v=heiler2"
             className="h-full w-full object-cover"
             muted
             loop
