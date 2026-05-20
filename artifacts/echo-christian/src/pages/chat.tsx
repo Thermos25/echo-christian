@@ -84,7 +84,7 @@ export default function ChatPage() {
     const video = avatarVideoRef.current;
     if (!video) return;
 
-    if (isStreaming) {
+    if (isStreaming && !isEchoPaused) {
       video.playbackRate = 1.03;
       video.play().catch(() => {});
     } else {
@@ -97,14 +97,14 @@ export default function ChatPage() {
         // ignorieren
       }
     }
-  }, [isStreaming]);
+  }, [isStreaming, isEchoPaused]);
 
 const [autoSpeak, setAutoSpeak] = useState(true);
   const autoSpeakRef = useRef(true);
   autoSpeakRef.current = autoSpeak;
 
   const handleResponseComplete = useCallback((content: string) => {
-    if (autoSpeakRef.current) {
+    if (autoSpeakRef.current && !isEchoPausedRef.current) {
       speak(content, "auto");
     }
   }, [speak]);
@@ -210,7 +210,7 @@ const [autoSpeak, setAutoSpeak] = useState(true);
     lastSpeechTextRef.current = cleanText;
     setInput("");
     setInterimText("");
-    setAutoSpeak(true);
+    setIsEchoPaused(false);
 
     // Natürliches Gespräch: sofort senden, sobald die Spracheingabe final erkannt wurde.
     sendMessage(cleanText);
@@ -222,6 +222,7 @@ const [autoSpeak, setAutoSpeak] = useState(true);
     if (!text || isStreaming) return;
     if (micState === "listening") stopMic();
     setInterimText("");
+    setIsEchoPaused(false);
     sendMessage(text);
     setInput("");
   };
@@ -258,7 +259,7 @@ const [autoSpeak, setAutoSpeak] = useState(true);
           <button
             onClick={toggleAutoSpeak}
             data-testid="button-toggle-autospeak"
-            title={autoSpeak ? "Auto-speak on" : "Auto-speak off"}
+            title={autoSpeak ? "Automatische Stimme ist eingeschaltet" : "Automatische Stimme ist ausgeschaltet"}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass-panel border transition-all duration-200"
             style={{
               borderColor: autoSpeak ? "rgba(59,130,246,0.5)" : "rgba(59,130,246,0.15)",
@@ -268,7 +269,7 @@ const [autoSpeak, setAutoSpeak] = useState(true);
           >
             {autoSpeak ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
             <span className="text-[10px] font-mono uppercase tracking-wider">
-              {autoSpeak ? "Voice On" : "Voice Off"}
+              {autoSpeak ? "Ton an" : "Ton aus"}
             </span>
           </button>
           <Button
@@ -303,7 +304,7 @@ const [autoSpeak, setAutoSpeak] = useState(true);
 
           <div
             className={
-              isStreaming
+              isStreaming && !isEchoPaused
                 ? "absolute inset-0 rounded-2xl ring-4 ring-blue-400/50 animate-pulse"
                 : "absolute inset-0 rounded-2xl ring-1 ring-blue-500/20"
             }
@@ -330,10 +331,34 @@ const [autoSpeak, setAutoSpeak] = useState(true);
             Echo Christian
           </div>
           <div className="mt-1 text-[11px] text-blue-100/75">
-            {isStreaming
+            {isEchoPaused
+              ? "pausiert"
+              : isStreaming
               ? "schreibt gerade..."
-              : "wartet ruhig"}
+              : autoSpeak
+              ? "wartet ruhig"
+              : "Stimme aus"}
           </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={pauseEcho}
+            data-echo-pause-button
+            className="rounded-xl border border-blue-400/35 bg-blue-950/45 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-blue-100 transition hover:border-blue-300/70 hover:bg-blue-800/60"
+          >
+            Pause
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleAutoSpeak}
+            data-echo-voice-toggle-button
+            className="rounded-xl border border-blue-400/35 bg-blue-950/45 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-blue-100 transition hover:border-blue-300/70 hover:bg-blue-800/60"
+          >
+            {autoSpeak ? "Stimme aus" : "Stimme an"}
+          </button>
         </div>
       </div>
 
@@ -382,7 +407,7 @@ const [autoSpeak, setAutoSpeak] = useState(true);
         {/* Avatar */}
         <div className="flex-shrink-0 flex justify-center py-6">
           <div className="relative">
-            <EchoAvatar active={isStreaming} />
+            <EchoAvatar active={isStreaming && !isEchoPaused} />
             {isStreaming && (
               <motion.div
                 className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1"
