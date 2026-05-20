@@ -78,6 +78,28 @@ export default function ChatPage() {
   const avatarVideoRef = useRef<HTMLVideoElement | null>(null);
   const centerAvatarVideoRef = useRef<HTMLVideoElement | null>(null);
 
+  // data-heiler-avatar-sync-effect
+  useEffect(() => {
+    const videos = [
+      avatarVideoRef.current,
+      centerAvatarVideoRef.current,
+    ].filter(Boolean) as HTMLVideoElement[];
+
+    for (const video of videos) {
+      if (ttsState === "playing") {
+        video.playbackRate = 1.08;
+        video.play().catch(() => {});
+      } else if (ttsState === "loading") {
+        video.playbackRate = 0.65;
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    }
+  }, [ttsState]);
+
+
+
   useEffect(() => {
     const videos = [
       avatarVideoRef.current,
@@ -312,7 +334,7 @@ export default function ChatPage() {
         <div className="relative mx-auto mb-2 aspect-[3/4] w-full overflow-hidden rounded-2xl border border-blue-300/50 bg-black shadow-[0_0_32px_rgba(59,130,246,0.45)]">
           <video
             ref={avatarVideoRef}
-            src="/echo-avatar-speaking.mp4"
+            src="/heiler-echo-avatar.mp4"
             className="h-full w-full object-cover"
             muted
             loop
